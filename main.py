@@ -1,18 +1,20 @@
 from psaw import PushshiftAPI
+from datetime import datetime as dt, timedelta
 import json
-import datetime as dt
 import operator
 
 api = PushshiftAPI()
-startdate=int(dt.datetime(2020,4,7).timestamp())
+
+startdate= dt.today() - timedelta(days=7)
+startstamp = int(startdate.timestamp())
 #Function returns a json object with all posts on acvillagers in the last week
 gen = api.search_submissions(
-                             after=startdate,
+                             after=startstamp,
                              subreddit='acvillager',
                              q='[LF]')
 results1 = list(gen)
 gen = api.search_submissions(
-                             after=startdate,
+                             after=startstamp,
                              subreddit='adoptmyvillager',
                              q='[LF]')
 results2 = list(gen)
@@ -50,28 +52,19 @@ for each in results2:
 
 
 
-
+#Checks Submission titels for villager name accourances
 for i in range(0, len(popularityList)):
     count = 0
     for each in outlist:
         format1 = " "+popularityList[i][0]+" "
-        format2 = popularityList[i][0]+" "
-        format3 = popularityList[i][0]+","
-        format4 = ","+popularityList[i][0]
-        format5 = " "+popularityList[i][0]
-        if (format1 in each.lower() or format2 in each.lower() or format3 in each.lower() or format4 in each.lower() or format5 in each.lower()):
+        format2 = " "+popularityList[i][0]+","
+        format3 = "]"+popularityList[i][0]+" "
+        format4 = "]"+popularityList[i][0]+","
+        format5 = ","+popularityList[i][0]+" "
+        format6 = ","+popularityList[i][0]+","
+        if (format1 in each.lower() or format2 in each.lower() or format3 in each.lower() or format4 in each.lower() or format5 in each.lower() or format6 in each.lower()):
             count= count+1
     popularityList[i][1] = count
-
-popularityList = sorted(popularityList, key=operator.itemgetter(1))
-
-for line in popularityList:
-    if line[1] == 0:
-        popularityList.remove(line)
-
-for line in popularityList:
-    if line[1] == 0:
-        popularityList.remove(line)
 
 popularityList = sorted(popularityList, key=operator.itemgetter(1), reverse= True)
 
@@ -80,4 +73,7 @@ print('r/acvillager length: ',len(results1))
 print('r/adoptmyvillager length: ',len(results2))
 print('RAW length: ',len(results1)+len(results2))
 print('Filtered length: ',len(outlist))
-print(popularityList)
+
+with open('data/results.txt', 'w') as f:
+    for line in popularityList:
+        f.write(line[0]+ " - " + str(line[1]) + "\n")
