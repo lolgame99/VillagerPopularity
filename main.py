@@ -31,7 +31,7 @@ def main():
   mycursor = mydb.cursor()
 
 
-  mycursor.execute("DELETE FROM table_name;")
+  mycursor.execute("DELETE FROM villagerpopularity;")
   mydb.commit()
 
   sql = "INSERT INTO villagerpopularity (villager, popularity) VALUES (%s, %s)"
