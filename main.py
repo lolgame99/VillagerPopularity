@@ -13,31 +13,79 @@ mydb = mysql.connector.connect(
   )
 def main():
   resultPop = []
-  startdate= dt.today() - timedelta(days=7)
-  startstamp1 = int(startdate.timestamp())
-  #Function returns a json object with all posts on acvillagers in the last week
+  results1 = []
+  results2 = []
+  lastweek1 = []
+  lastweek2 = []
 
-  resultPop = getVillagerPop(startstamp1)
+  before= dt.today() - timedelta(days=7)
+  after = dt.today() - timedelta(days=14)
+  beforeStamp = int(before.timestamp())
+  afterStamp = int(after.timestamp())
+
+
+  gen = api.search_submissions(
+                               after=beforeStamp,
+                               subreddit='acvillager',
+                               q='[LF]')
+  results1 = list(gen)
+  gen = api.search_submissions(
+                               after=beforeStamp,
+                               subreddit='adoptmyvillager',
+                               q='[LF]')
+  results2 = list(gen)
+  #Function returns a json object with all posts on acvillagers in the last week
+  resultPop = getVillagerPop(results1, results2)
+
+  gen = api.search_submissions(
+                               before=beforeStamp,
+                               after=afterStamp,
+                               subreddit='acvillager',
+                               q='[LF]')
+  lastweek1 = list(gen)
+  gen = api.search_submissions(
+                               before=beforeStamp,
+                               after=afterStamp,
+                               subreddit='adoptmyvillager',
+                               q='[LF]')
+  lastweek2 = list(gen)
+  #Function returns a json object with all posts on acvillagers in the week before last
+  lastweekPop = getVillagerPop(lastweek1, lastweek2)
+
+  for thisWeek in resultPop:
+    for lastWeek in lastweekPop:
+      if thisWeek[0] == lastWeek[0]:
+        thisWeek[2] = thisWeek[1] - lastWeek[1]
 
   try:
       with open('data/results.txt', 'w') as f:
           for line in resultPop:
-              f.write(line[0]+ " - " + str(line[1]) + "\n")
+              f.write(line[0]+ " - " + str(line[1]) + " - " + str(line[2]) + "\n")
       print("Saved results.txt file")
   except Error:
       print("Failed to save results.txt file")
       print(Error)
 
+  try:
+      with open('data/lastWeek.txt', 'w') as f:
+          for line in lastweekPop:
+              f.write(line[0]+ " - " + str(line[1]) + " - " + str(line[2]) + "\n")
+      print("Saved lastWeek.txt file")
+  except Error:
+      print("Failed to save lastWeek.txt file")
+      print(Error)
+
+
   mycursor = mydb.cursor()
 
 
-  mycursor.execute("DELETE FROM villagerpopularity;")
+  mycursor.execute("DELETE FROM villagerPopularityWeek;")
   mydb.commit()
 
-  sql = "INSERT INTO villagerpopularity (villager, popularity) VALUES (%s, %s)"
+  sql = "INSERT INTO villagerPopularityWeek (villager, postcount, difference) VALUES (%s, %s, %s)"
   try:
       for each in resultPop:
-        val = (each[0], each[1])
+        val = (each[0], each[1], each[2])
         mycursor.execute(sql, val)
       mydb.commit()
       print("Inserted data into database")
@@ -50,17 +98,7 @@ def main():
 
 #Funtion to get All posts from r/acvillager and r/adoptmyvillager since the time of $startstamp
 #Returns a list with villager name and number of posts
-def getVillagerPop(startstamp):
-  gen = api.search_submissions(
-                               after=startstamp,
-                               subreddit='acvillager',
-                               q='[LF]')
-  results1 = list(gen)
-  gen = api.search_submissions(
-                               after=startstamp,
-                               subreddit='adoptmyvillager',
-                               q='[LF]')
-  results2 = list(gen)
+def getVillagerPop(results1, results2):
 
   villagers = []
   popularityList = []
@@ -71,7 +109,7 @@ def getVillagerPop(startstamp):
       for line in villagerFile:
           villagers.append(line.strip())
 
-  popularityList = [[0] * 2 for i in range(len(villagers))]
+  popularityList = [[0] * 3 for i in range(len(villagers))]
 
   #Puts villagers into 2D list
   for i in range(0, len(villagers)):
@@ -115,6 +153,7 @@ def getVillagerPop(startstamp):
   print('r/adoptmyvillager length: ',len(results2))
   print('RAW length: ',len(results1)+len(results2))
   print('Filtered length: ',len(outlist))
+  print("---------------------")
   return popularityList
 
 if __name__=="__main__":
